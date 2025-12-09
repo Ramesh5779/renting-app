@@ -1,0 +1,13 @@
+name: Keep Supabase Awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"      # every 10 minutes
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" "https://legnhikgjqgrkudfisio.supabase.co" || true

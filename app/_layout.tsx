@@ -77,7 +77,11 @@ function RootLayoutNav() {
   );
 }
 
+import useSupabaseReconnect from '@/hooks/useSupabaseReconnect';
+
 export default function RootLayout() {
+  useSupabaseReconnect();
+
   return (
     <ErrorBoundary>
       <AuthProvider>

@@ -4,7 +4,7 @@ export default {
     expo: {
         name: "renting-app",
         slug: "renting-app",
-        version: "1.0.2",
+        version: "1.0.1",
         orientation: "portrait",
         icon: "./assets/images/icon.png",
         scheme: "rentingapp",
@@ -52,7 +52,7 @@ export default {
         },
         android: {
             package: "com.renthive.app",
-            versionCode: 397,
+            versionCode: 396,
             adaptiveIcon: {
                 backgroundColor: "#E6F4FE",
                 foregroundImage: "./assets/images/android-icon-foreground.png",

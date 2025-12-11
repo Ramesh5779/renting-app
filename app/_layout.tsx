@@ -1,4 +1,5 @@
 import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
+import { ConnectionStatus } from '@/components/ConnectionStatus';
 import { OfflineBanner } from '@/components/ui/offline-banner';
 import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { logDeviceDiagnostics } from '@/utils/deviceInfo';
@@ -28,7 +29,6 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-import { ConnectionStatus } from '@/components/ConnectionStatus';
 
 function RootLayoutNav() {
   const { session, isLoading } = useAuth();

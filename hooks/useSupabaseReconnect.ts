@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { withTimeout } from "@/utils/timeout";
 import { useEffect } from "react";
 import { AppState, AppStateStatus } from "react-native";
 
@@ -6,14 +7,15 @@ export default function useSupabaseReconnect() {
     useEffect(() => {
         const handleAppStateChange = async (state: AppStateStatus) => {
             if (state === "active") {
-                console.log("🟡 App resumed → reconnecting Supabase...");
+                console.log("🟡 App became active → reconnecting Supabase...");
                 await reconnectSupabase();
             }
         };
 
         const sub = AppState.addEventListener("change", handleAppStateChange);
 
-        reconnectSupabase(); // Run on first app open too
+        // Run reconnect on initial app open
+        reconnectSupabase();
 
         return () => sub.remove();
     }, []);
@@ -21,21 +23,53 @@ export default function useSupabaseReconnect() {
 
 async function reconnectSupabase() {
     try {
-        // 1️⃣ Always re-fetch session
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) console.log("Session fetch error:", sessionError);
+        console.log("🔄 Starting Supabase reconnect sequence...");
 
-        // 2️⃣ Always force refresh when app wakes up
-        await supabase.auth.refreshSession();
+        // 1️⃣ Fetch current session with timeout (10 seconds)
+        const { data: sessionData, error: sessionError } = await withTimeout(
+            supabase.auth.getSession(),
+            10000,
+            "Session fetch timed out"
+        );
 
-        // 3️⃣ Do a very small test request to reset dead network
-        // Using 'room_listings' table as a lightweight check since 'profiles' might rely on auth and we want to just check connectivity
-        // actually user suggested 'profiles', let's stick to 'profiles' if it exists. 
-        // Wait, earlier I saw 'profiles' table usage in 'fix_owner_name_uuids.sql', so it exists.
-        await supabase.from("profiles").select("id").limit(1);
+        if (sessionError) {
+            console.log("⚠️  Session fetch error:", sessionError.message);
 
-        console.log("🟢 Supabase fully reconnected.");
+            // Check if it's an expired/invalid token error
+            if (sessionError.message?.includes("Invalid Refresh Token") ||
+                sessionError.message?.includes("Refresh Token Not Found")) {
+                console.log("ℹ️  Session expired or not found - continuing in guest mode");
+                // Don't throw - allow app to continue in guest mode
+                return;
+            }
+        }
+
+        // 2️⃣ Attempt to refresh session if we have one
+        if (sessionData?.session) {
+            try {
+                await withTimeout(
+                    supabase.auth.refreshSession(),
+                    10000,
+                    "Session refresh timed out"
+                );
+                console.log("✅ Session refreshed successfully");
+            } catch (refreshError: any) {
+                console.log("⚠️  Session refresh failed:", refreshError.message);
+                // Continue anyway - not critical for guest browsing
+            }
+        }
+
+        // 3️⃣ Lightweight connectivity check with timeout
+        await withTimeout(
+            supabase.from("room_listings").select("id").limit(1),
+            10000,
+            "Database connectivity check timed out"
+        );
+
+        console.log("🟢 Supabase reconnected successfully");
     } catch (err: any) {
-        console.log("🔴 Reconnect failed:", err.message);
+        console.error("🔴 Supabase reconnect failed:", err.message);
+        // Don't throw - let app continue with potentially degraded functionality
+        // The ConnectionStatus component will show error UI if needed
     }
 }
